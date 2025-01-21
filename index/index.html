@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RFID Attendance System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f9f9f9;
+            padding: 20px;
+        }
+        .container {
+            margin-top: 100px;
+        }
+        .student-info {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #4caf50;
+            color: white;
+            border-radius: 8px;
+            display: none;
+        }
+        .student-info img {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            margin-bottom: 15px;
+        }
+        .error {
+            color: red;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>RFID Attendance System</h1>
+        <p>Waiting for RFID scan...</p>
+
+        <div class="student-info" id="student-info">
+            <img id="profile-picture" src="" alt="Profile Picture">
+            <h2 id="student-name"></h2>
+            <p><strong>Course - Year:</strong> <span id="course-year"></span></p>
+            <p><strong>School Year:</strong> <span id="school-year"></span></p>
+        </div>
+
+        <p class="error" id="error-message"></p>
+    </div>
+
+    <script>
+        let lastRFID = ""; // Track the last displayed RFID
+
+        function checkRFID() {
+            fetch("rfid_reader.php")
+                .then(response => response.json())
+                .then(data => {
+                    const studentInfo = document.getElementById("student-info");
+                    const errorMessage = document.getElementById("error-message");
+
+                    if (data.status === "success") {
+                        const student = data.data;
+
+                        // If the RFID serial is the same as the last displayed, do nothing
+                        if (lastRFID === student.rfid_serial) {
+                            return;
+                        }
+
+                        // Update student info and reset lastRFID
+                        lastRFID = student.rfid_serial;
+
+                        document.getElementById("profile-picture").src = student.photo_path;
+                        document.getElementById("student-name").textContent = student.student_name;
+                        document.getElementById("course-year").textContent = student.course_year;
+                        document.getElementById("school-year").textContent = student.school_year;
+
+                        studentInfo.style.display = "block";
+                        errorMessage.textContent = "";
+                    } else if (data.status === "not_found") {
+                        // Clear the student info and display error
+                        studentInfo.style.display = "none";
+                        errorMessage.textContent = "RFID not recognized.";
+                        lastRFID = ""; // Reset lastRFID for new scans
+                    } else if (data.status === "empty") {
+                        // No RFID detected
+                        errorMessage.textContent = "";
+                        // Keep the current info visible if no RFID is scanned
+                    } else if (data.status === "error") {
+                        // Display error message
+                        errorMessage.textContent = data.message;
+                        studentInfo.style.display = "none";
+                        lastRFID = ""; // Reset lastRFID for new scans
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                });
+        }
+
+        // Poll the backend every second
+        setInterval(checkRFID, 1000);
+    </script>
+</body>
+</html>
